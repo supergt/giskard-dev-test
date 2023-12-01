@@ -22,18 +22,4 @@ public class MilleniumFalconApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(MilleniumFalconApplication.class, args);
 	}
-
-	@Bean
-	public DataSource dataSource() throws IOException {
-		// The class loader that loaded the class
-		ClassLoader classLoader = getClass().getClassLoader();
-		InputStream inputStream = classLoader.getResourceAsStream("config/millennium_falcon.json");
-
-		Config config = new ObjectMapper().readValue(inputStream, Config.class);
-
-		final DriverManagerDataSource dataSource = new DriverManagerDataSource();
-		dataSource.setDriverClassName("org.sqlite.JDBC");
-		dataSource.setUrl("jdbc:sqlite::resource:config/" + config.getRoutesDb());
-		return dataSource;
-	}
 }
