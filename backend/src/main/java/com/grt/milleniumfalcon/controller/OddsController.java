@@ -1,38 +1,29 @@
 package com.grt.milleniumfalcon.controller;
 
+import com.grt.milleniumfalcon.calculator.OddsCalculator;
 import com.grt.milleniumfalcon.dto.OddsCalculationResult;
+import com.grt.milleniumfalcon.dto.StolenPlans;
 import com.grt.milleniumfalcon.model.Config;
-import com.grt.milleniumfalcon.model.Route;
-import com.grt.milleniumfalcon.repository.RouteRepository;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.math.BigDecimal;
-import java.util.List;
 
 @CrossOrigin(origins = "*")
 @RestController
 public class OddsController {
     final
-    RouteRepository routeRepository;
+    OddsCalculator oddsCalculator;
 
     final Config config;
 
-    public OddsController(RouteRepository routeRepository, Config config) {
-        this.routeRepository = routeRepository;
+    public OddsController(OddsCalculator oddsCalculator, Config config) {
+        this.oddsCalculator = oddsCalculator;
         this.config = config;
     }
 
-    @GetMapping("")
-    public OddsCalculationResult calculateOdds() {
-        List<Route> routes = routeRepository.findAll();
-
-        System.out.println("Autonomy = " + config.getAutonomy());
-
-        return OddsCalculationResult.builder()
-                .oddsPercentage(new BigDecimal("0.5"))
-                .canEscape(false)
-                .build();
+    @PostMapping("")
+    public OddsCalculationResult calculateOdds(@RequestBody StolenPlans stolenPlans) {
+        return oddsCalculator.calculate(stolenPlans);
     }
 }
