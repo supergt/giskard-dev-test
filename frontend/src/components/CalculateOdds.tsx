@@ -5,7 +5,6 @@ import { StolenPlans } from "../types/StolenPlans";
 
 export const CalculateOdds = () => {
     const [odds, setOdds] = useState<number>()
-    const [canEscape, setCanEscape] = useState<boolean>()
     const [stolenPlans, setStolenPlans] = useState<StolenPlans>()
 
     useEffect(() => {
@@ -28,7 +27,6 @@ export const CalculateOdds = () => {
         if (stolenPlans) {
             axios.post<OddsCalculationResult>("http://localhost:8080", stolenPlans).then((res) => {
                 setOdds(res.data.oddsPercentage)
-                setCanEscape(res.data.canEscape)
             })
         }
 
@@ -39,8 +37,7 @@ export const CalculateOdds = () => {
         {!odds ? 
             <>Calculating odds...</>
         : <>
-            <p>Odds calculated - {odds}%.</p>
-            <p>The millenium falcon {canEscape ? "can" : "cannot"} escape.</p>
+            <p>Odds calculated - Millennium Falcon has {odds}% chance of escaping.</p>
         </>}
     </>
 }
