@@ -5,13 +5,24 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class OddsCalculationResult {
-    BigDecimal oddsPercentage;
-    boolean canEscape;
+    int oddsPercentage;
+    List<EscapePlan> escapePlanSteps;
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class EscapePlan {
+        String startPlanet;
+        String endPlanet;
+        boolean refuel;
+        boolean waitOneDay;
+    }
 }

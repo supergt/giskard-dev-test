@@ -19,8 +19,7 @@ public class OddsCalculator {
 
     public OddsCalculationResult calculate(StolenPlans stolenPlans) {
         return OddsCalculationResult.builder()
-                .oddsPercentage(new BigDecimal("0.5"))
-                .canEscape(false)
+                .oddsPercentage(5)
                 .build();
     }
 }
