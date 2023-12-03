@@ -16,4 +16,11 @@ public class Config {
     String arrival;
     @JsonProperty("routes_db")
     String routesDb;
+
+    public void copy(Config newConfig) {
+        this.autonomy = newConfig.autonomy;
+        this.departure = newConfig.departure;
+        this.arrival = newConfig.arrival;
+        this.routesDb = newConfig.routesDb;
+    }
 }

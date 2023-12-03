@@ -13,7 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.math.BigDecimal;
+import java.io.IOException;
 import java.util.List;
 
 import static com.grt.milleniumfalcon.PlanetEnum.Dagobah;
@@ -63,7 +63,7 @@ public class OddsCalculatorTest {
         StolenPlans stolenPlans = null;
 
         // When
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculate(stolenPlans));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculateWithDefaultConfig(stolenPlans));
 
         // Then
         assertNotNull(exception);
@@ -75,7 +75,7 @@ public class OddsCalculatorTest {
         StolenPlans stolenPlans = new StolenPlans();
 
         // When
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculate(stolenPlans));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculateWithDefaultConfig(stolenPlans));
 
         // Then
         assertNotNull(exception);
@@ -88,7 +88,7 @@ public class OddsCalculatorTest {
         stolenPlans.setCountdown(-1);
 
         // When
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculate(stolenPlans));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculateWithDefaultConfig(stolenPlans));
 
         // Then
         assertNotNull(exception);
@@ -105,7 +105,7 @@ public class OddsCalculatorTest {
         stolenPlans.setBountyHunters(isNull ? null : List.of());
 
         // When
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculate(stolenPlans));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculateWithDefaultConfig(stolenPlans));
 
         // Then
         assertNotNull(exception);
@@ -122,7 +122,7 @@ public class OddsCalculatorTest {
         stolenPlans.getBountyHunters().get(0).setPlanet(isNull ? null : "");
 
         // When
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculate(stolenPlans));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculateWithDefaultConfig(stolenPlans));
 
         // Then
         assertNotNull(exception);
@@ -135,14 +135,14 @@ public class OddsCalculatorTest {
         stolenPlans.getBountyHunters().get(1).setDay(-10);
 
         // When
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculate(stolenPlans));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> oddsCalculator.calculateWithDefaultConfig(stolenPlans));
 
         // Then
         assertNotNull(exception);
     }
     // endregion
     @Test
-    void calculate_example_1() {
+    void calculate_example_1() throws IOException {
         // Given
         StolenPlans stolenPlans = StolenPlans.builder()
                 .countdown(7)
@@ -170,14 +170,14 @@ public class OddsCalculatorTest {
         when(config.getArrival()).thenReturn(config.getArrival());
 
         // When
-        OddsCalculationResult result = oddsCalculator.calculate(stolenPlans);
+        OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
 
         // Then
         assertEquals(expected, result);
     }
 
     @Test
-    void calculate_example_2() {
+    void calculate_example_2() throws IOException {
         // Given
         StolenPlans stolenPlans = StolenPlans.builder()
                 .countdown(8)
@@ -210,14 +210,14 @@ public class OddsCalculatorTest {
         when(config.getArrival()).thenReturn(config.getArrival());
 
         // When
-        OddsCalculationResult result = oddsCalculator.calculate(stolenPlans);
+        OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
 
         // Then
         assertEquals(expected, result);
     }
 
     @Test
-    void calculate_example_3() {
+    void calculate_example_3() throws IOException {
         // Given
         StolenPlans stolenPlans = StolenPlans.builder()
                 .countdown(9)
@@ -251,14 +251,14 @@ public class OddsCalculatorTest {
         when(config.getArrival()).thenReturn(config.getArrival());
 
         // When
-        OddsCalculationResult result = oddsCalculator.calculate(stolenPlans);
+        OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
 
         // Then
         assertEquals(expected, result);
     }
 
     @Test
-    void calculate_example_4() {
+    void calculate_example_4() throws IOException {
         // Given
         StolenPlans stolenPlans = StolenPlans.builder()
                 .countdown(10)
@@ -293,7 +293,7 @@ public class OddsCalculatorTest {
         when(config.getArrival()).thenReturn(config.getArrival());
 
         // When
-        OddsCalculationResult result = oddsCalculator.calculate(stolenPlans);
+        OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
 
         // Then
         assertEquals(expected, result);
