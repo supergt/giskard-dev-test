@@ -22,7 +22,8 @@ public class OddsCalculationResult {
     public static class EscapePlan {
         String startPlanet;
         String endPlanet;
+        int startDay;
+        int endDay;
         boolean refuel;
-        boolean waitOneDay;
     }
 }

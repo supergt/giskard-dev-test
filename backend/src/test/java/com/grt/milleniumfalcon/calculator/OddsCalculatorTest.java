@@ -215,9 +215,9 @@ public class OddsCalculatorTest {
         OddsCalculationResult expected = OddsCalculationResult.builder()
                 .oddsPercentage(81)
                 .escapePlanSteps(List.of(
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine.name()).endPlanet(Hoth.name()).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).refuel(true).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).endPlanet(Endor.name()).build()
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine.name()).endPlanet(Hoth.name()).startDay(1).endDay(6).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).refuel(true).startDay(6).endDay(7).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).endPlanet(Endor.name()).startDay(7).endDay(8).build()
                 ))
                 .build();
 
@@ -253,10 +253,10 @@ public class OddsCalculatorTest {
         OddsCalculationResult expected = OddsCalculationResult.builder()
                 .oddsPercentage(90)
                 .escapePlanSteps(List.of(
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine.name()).endPlanet(Dagobah.name()).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).refuel(true).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).endPlanet(Hoth.name()).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).endPlanet(Endor.name()).build()
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine.name()).endPlanet(Dagobah.name()).startDay(1).endDay(6).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).refuel(true).startDay(6).endDay(7).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).endPlanet(Hoth.name()).startDay(7).endDay(8).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).endPlanet(Endor.name()).startDay(8).endDay(9).build()
                 ))
                 .build();
 
@@ -292,11 +292,11 @@ public class OddsCalculatorTest {
         OddsCalculationResult expected = OddsCalculationResult.builder()
                 .oddsPercentage(100)
                 .escapePlanSteps(List.of(
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine.name()).endPlanet(Dagobah.name()).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).refuel(true).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).waitOneDay(true).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).endPlanet(Hoth.name()).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).endPlanet(Endor.name()).build()
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine.name()).endPlanet(Dagobah.name()).startDay(1).endDay(6).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).refuel(true).startDay(6).endDay(7).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).refuel(true).startDay(7).endDay(8).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah.name()).endPlanet(Hoth.name()).startDay(8).endDay(9).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth.name()).endPlanet(Endor.name()).startDay(9).endDay(10).build()
                 ))
                 .build();
 
