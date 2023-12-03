@@ -3,7 +3,7 @@ package com.grt.milleniumfalcon.shell;
 import com.grt.milleniumfalcon.calculator.OddsCalculator;
 import com.grt.milleniumfalcon.dto.StolenPlans;
 import com.grt.milleniumfalcon.helper.ClassPathFileLoader;
-import com.grt.milleniumfalcon.model.Config;
+import com.grt.milleniumfalcon.dto.Config;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
 import org.springframework.shell.standard.ShellOption;
@@ -16,12 +16,10 @@ import java.util.stream.Collectors;
 @ShellComponent
 public class OddsShellCommands {
     final DataSource dataSource;
-    final Config config;
     final OddsCalculator oddsCalculator;
     final ClassPathFileLoader classPathFileLoader;
-    public OddsShellCommands(DataSource dataSource, Config config, OddsCalculator oddsCalculator, ClassPathFileLoader classPathFileLoader) {
+    public OddsShellCommands(DataSource dataSource, OddsCalculator oddsCalculator, ClassPathFileLoader classPathFileLoader) {
         this.dataSource = dataSource;
-        this.config = config;
         this.oddsCalculator = oddsCalculator;
         this.classPathFileLoader = classPathFileLoader;
     }

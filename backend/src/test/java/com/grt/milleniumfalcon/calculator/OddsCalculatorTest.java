@@ -2,7 +2,7 @@ package com.grt.milleniumfalcon.calculator;
 
 import com.grt.milleniumfalcon.dto.OddsCalculationResult;
 import com.grt.milleniumfalcon.dto.StolenPlans;
-import com.grt.milleniumfalcon.model.Config;
+import com.grt.milleniumfalcon.dto.Config;
 import com.grt.milleniumfalcon.model.Route;
 import com.grt.milleniumfalcon.model.RouteCompositeId;
 import com.grt.milleniumfalcon.repository.RouteRepository;

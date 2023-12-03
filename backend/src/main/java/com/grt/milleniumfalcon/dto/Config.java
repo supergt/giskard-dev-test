@@ -1,4 +1,4 @@
-package com.grt.milleniumfalcon.model;
+package com.grt.milleniumfalcon.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;

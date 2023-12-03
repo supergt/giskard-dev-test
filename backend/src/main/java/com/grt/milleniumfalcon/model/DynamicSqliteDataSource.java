@@ -1,5 +1,6 @@
 package com.grt.milleniumfalcon.model;
 
+import com.grt.milleniumfalcon.dto.Config;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
