@@ -1,11 +1,14 @@
 package com.grt.milleniumfalcon.calculator;
 
+import com.grt.milleniumfalcon.dto.Config;
 import com.grt.milleniumfalcon.dto.OddsCalculationResult;
 import com.grt.milleniumfalcon.dto.StolenPlans;
-import com.grt.milleniumfalcon.dto.Config;
+import com.grt.milleniumfalcon.helper.ClassPathFileLoader;
+import com.grt.milleniumfalcon.model.DynamicSqliteDataSource;
 import com.grt.milleniumfalcon.model.Route;
 import com.grt.milleniumfalcon.model.RouteCompositeId;
 import com.grt.milleniumfalcon.repository.RouteRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -23,19 +26,36 @@ import static com.grt.milleniumfalcon.PlanetEnum.Tatooine;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.shell.interactive.enabled=false")
 public class OddsCalculatorTest {
+    @InjectMocks
+    OddsCalculator oddsCalculator;
+
+    // region Mocks
     @Mock
     RouteRepository routeRepository;
 
     @Mock
-    Config config;
+    DynamicSqliteDataSource dataSource;
 
-    @InjectMocks
-    OddsCalculator oddsCalculator;
+    @Mock
+    ClassPathFileLoader classPathFileLoader;
 
+    @BeforeEach
+    void setUp() throws IOException {
+        Config mockConfig = Config.builder()
+                .autonomy(6)
+                .departure(Tatooine.name())
+                .arrival(Endor.name())
+                .routesDb("universe.db")
+                .build();
+        doReturn(mockConfig).when(classPathFileLoader).loadFile(any(), eq(Config.class));
+    }
     // region calculate
     private static StolenPlans getNominalStolenPlans() {
         return StolenPlans.builder()
@@ -165,9 +185,7 @@ public class OddsCalculatorTest {
 
         // Mocks
         when(routeRepository.findAll()).thenReturn(getRoutes());
-        when(config.getAutonomy()).thenReturn(config.getAutonomy());
-        when(config.getDeparture()).thenReturn(config.getDeparture());
-        when(config.getArrival()).thenReturn(config.getArrival());
+        doReturn(config).when(classPathFileLoader).loadFile(any(), eq(Config.class));
 
         // When
         OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
@@ -205,9 +223,7 @@ public class OddsCalculatorTest {
 
         // Mocks
         when(routeRepository.findAll()).thenReturn(getRoutes());
-        when(config.getAutonomy()).thenReturn(config.getAutonomy());
-        when(config.getDeparture()).thenReturn(config.getDeparture());
-        when(config.getArrival()).thenReturn(config.getArrival());
+        doReturn(config).when(classPathFileLoader).loadFile(any(), eq(Config.class));
 
         // When
         OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
@@ -246,9 +262,7 @@ public class OddsCalculatorTest {
 
         // Mocks
         when(routeRepository.findAll()).thenReturn(getRoutes());
-        when(config.getAutonomy()).thenReturn(config.getAutonomy());
-        when(config.getDeparture()).thenReturn(config.getDeparture());
-        when(config.getArrival()).thenReturn(config.getArrival());
+        doReturn(config).when(classPathFileLoader).loadFile(any(), eq(Config.class));
 
         // When
         OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
@@ -288,9 +302,7 @@ public class OddsCalculatorTest {
 
         // Mocks
         when(routeRepository.findAll()).thenReturn(getRoutes());
-        when(config.getAutonomy()).thenReturn(config.getAutonomy());
-        when(config.getDeparture()).thenReturn(config.getDeparture());
-        when(config.getArrival()).thenReturn(config.getArrival());
+        doReturn(config).when(classPathFileLoader).loadFile(any(), eq(Config.class));
 
         // When
         OddsCalculationResult result = oddsCalculator.calculateWithDefaultConfig(stolenPlans);
