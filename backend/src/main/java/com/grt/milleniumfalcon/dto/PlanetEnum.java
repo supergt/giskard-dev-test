@@ -1,4 +1,4 @@
-package com.grt.milleniumfalcon;
+package com.grt.milleniumfalcon.dto;
 
 public enum PlanetEnum {
     Tatooine,
