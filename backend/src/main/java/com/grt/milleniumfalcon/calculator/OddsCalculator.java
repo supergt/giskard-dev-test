@@ -12,6 +12,7 @@ import com.grt.milleniumfalcon.repository.RouteRepository;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -45,7 +46,16 @@ public class OddsCalculator {
     }
 
     public OddsCalculationResult calculate(@NotNull StolenPlans stolenPlans, @NotNull String configFolderPath, @NotNull Config overrideConfig) {
+        validateStolenPlans(stolenPlans);
+        validateConfig(overrideConfig);
+
         List<Route> routes = loadRoutesWithCustomConfig(configFolderPath, overrideConfig);
+
+        if (overrideConfig.getArrival().equals(overrideConfig.getDeparture())) {
+            return OddsCalculationResult.builder()
+                    .oddsPercentage(100)
+                    .build();
+        }
 
         List<OddsCalculationResult.EscapePlan> optimalEscapePlans = buildOptimalEscapePlans(stolenPlans, routes, overrideConfig);
 
@@ -57,6 +67,27 @@ public class OddsCalculator {
                 .build();
     }
 
+    // region validators
+    private void validateConfig(Config overrideConfig) {
+        if (null == overrideConfig
+        || !StringUtils.hasText(overrideConfig.getArrival())
+        || !StringUtils.hasText(overrideConfig.getDeparture())
+        || overrideConfig.getAutonomy() < 0
+        || !StringUtils.hasText(overrideConfig.getRoutesDb())) {
+            throw new IllegalArgumentException("Invalid config");
+        }
+    }
+
+    private void validateStolenPlans(StolenPlans stolenPlans) {
+        if (null == stolenPlans
+                || stolenPlans.getCountdown() < 0
+                || CollectionUtils.isEmpty(stolenPlans.getBountyHunters())
+                || stolenPlans.getBountyHunters().stream().anyMatch(bountyHunter -> bountyHunter.getDay() < 0 || !StringUtils.hasText(bountyHunter.getPlanet()))) {
+            throw new IllegalArgumentException("Invalid stolen plans");
+        }
+    }
+    // endregion
+
     protected @NotNull List<OddsCalculationResult.EscapePlan> buildOptimalEscapePlans(@NotNull StolenPlans stolenPlans, @NotNull List<Route> routes, @NotNull Config config) {
         Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getPlanetToAllPossibleDestinations(routes);
 
@@ -66,8 +97,15 @@ public class OddsCalculator {
 
         List<List<OddsCalculationResult.EscapePlan>> allEscapePlans = buildEscapePlans(startPlanet, 0, targetPlanet, totalDays, config.getAutonomy(), config.getAutonomy(), planetToAllPossibleDestinations);
 
+        if (CollectionUtils.isEmpty(allEscapePlans)) {
+            return List.of();
+        }
+
+        Comparator<List<OddsCalculationResult.EscapePlan>> escapePlanComparator1 = Comparator.comparing(escapePlans -> getCaptureChance(escapePlans, stolenPlans));
+        Comparator<List<OddsCalculationResult.EscapePlan>> escapePlanComparator2 = Comparator.comparing(List::size);
+
         return allEscapePlans.stream()
-                .min(Comparator.comparing(escapePlans -> getCaptureChance(escapePlans, stolenPlans)))
+                .min(escapePlanComparator1.thenComparing(escapePlanComparator2))
                 .orElse(List.of());
     }
 

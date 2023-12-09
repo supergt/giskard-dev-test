@@ -10,6 +10,7 @@ import com.grt.milleniumfalcon.model.DynamicSqliteDataSource;
 import com.grt.milleniumfalcon.model.Route;
 import com.grt.milleniumfalcon.model.RouteCompositeId;
 import com.grt.milleniumfalcon.repository.RouteRepository;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -85,7 +86,7 @@ class OddsCalculatorTest {
     }
     // region required params
     @Test
-    void calculate_stolenPlansNull_exception() {
+    void calculate_stolenPlansNull_exception() throws IOException {
         // Given
         StolenPlans stolenPlans = null;
 
@@ -184,10 +185,12 @@ class OddsCalculatorTest {
                 .autonomy(6)
                 .departure(Tatooine.name())
                 .arrival(Endor.name())
+                .routesDb("universe.db")
                 .build();
 
         OddsCalculationResult expected = OddsCalculationResult.builder()
                 .oddsPercentage(0)
+                .escapePlanSteps(List.of())
                 .build();
 
         // Mocks
@@ -217,6 +220,7 @@ class OddsCalculatorTest {
                 .autonomy(6)
                 .departure(Tatooine.name())
                 .arrival(Endor.name())
+                .routesDb("universe.db")
                 .build();
 
         OddsCalculationResult expected = OddsCalculationResult.builder()
@@ -255,6 +259,7 @@ class OddsCalculatorTest {
                 .autonomy(6)
                 .departure(Tatooine.name())
                 .arrival(Endor.name())
+                .routesDb("universe.db")
                 .build();
 
         OddsCalculationResult expected = OddsCalculationResult.builder()
@@ -294,13 +299,14 @@ class OddsCalculatorTest {
                 .autonomy(6)
                 .departure(Tatooine.name())
                 .arrival(Endor.name())
+                .routesDb("universe.db")
                 .build();
 
         OddsCalculationResult expected = OddsCalculationResult.builder()
                 .oddsPercentage(100)
                 .escapePlanSteps(List.of(
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine).endPlanet(Dagobah).startDay(0).endDay(6).build(),
-                        OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah).refuel(true).startDay(6).endDay(7).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine).startDay(0).endDay(1).refuel(true).build(),
+                        OddsCalculationResult.EscapePlan.builder().startPlanet(Tatooine).endPlanet(Dagobah).startDay(1).endDay(7).build(),
                         OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah).refuel(true).startDay(7).endDay(8).build(),
                         OddsCalculationResult.EscapePlan.builder().startPlanet(Dagobah).endPlanet(Hoth).startDay(8).endDay(9).build(),
                         OddsCalculationResult.EscapePlan.builder().startPlanet(Hoth).endPlanet(Endor).startDay(9).endDay(10).build()
@@ -933,6 +939,263 @@ class OddsCalculatorTest {
 
         // Then
         assertEquals(expected, new HashSet<>(result));
+    }
+    // endregion
+    // region buildOptimalEscapePlans
+
+    @Test
+    void buildOptimalEscapePlans_alreadyAtTarget_returnEmptyList() {
+        // Given
+        Config config = Config.builder()
+                .arrival(Tatooine.name())
+                .departure(Tatooine.name())
+                .autonomy(6)
+                .build();
+
+        StolenPlans stolenPlans = getNominalStolenPlans();
+        List<Route> routes = getRoutes();
+        List<OddsCalculationResult.EscapePlan> expected = List.of();
+
+        // When
+        List<OddsCalculationResult.EscapePlan> result = oddsCalculator.buildOptimalEscapePlans(stolenPlans, routes, config);
+
+        // Then
+        assertEquals(expected, result);
+    }
+    @Test
+    void buildOptimalEscapePlans_noPlansPossible_returnEmptyList() {
+        // Given
+        Config config = Config.builder()
+                .arrival(Tatooine.name())
+                .departure(Hoth.name())
+                .autonomy(6)
+                .build();
+
+        StolenPlans stolenPlans = getNominalStolenPlans();
+        stolenPlans.setCountdown(1);
+        List<Route> routes = getRoutes();
+        List<OddsCalculationResult.EscapePlan> expected = List.of();
+
+        // When
+        List<OddsCalculationResult.EscapePlan> result = oddsCalculator.buildOptimalEscapePlans(stolenPlans, routes, config);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildOptimalEscapePlans_onePlan_returnOnePlan() {
+        // Given
+        Config config = Config.builder()
+                .departure(Tatooine.name())
+                .arrival(Hoth.name())
+                .autonomy(6)
+                .build();
+
+        StolenPlans stolenPlans = getNominalStolenPlans();
+        stolenPlans.setCountdown(6);
+        List<Route> routes = getRoutes();
+        List<OddsCalculationResult.EscapePlan> expected = List.of(
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Tatooine)
+                        .startDay(0)
+                        .endPlanet(Hoth)
+                        .endDay(6)
+                        .build()
+        );
+
+        // When
+        List<OddsCalculationResult.EscapePlan> result = oddsCalculator.buildOptimalEscapePlans(stolenPlans, routes, config);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildOptimalEscapePlans_multiplePlans_returnWithMinimumCaptureChance() {
+        // Given
+        Config config = Config.builder()
+                .departure(Dagobah.name())
+                .arrival(Endor.name())
+                .autonomy(6)
+                .build();
+
+        /*
+        Routes that will be created
+        1. Dagobah -> Hoth -> Endor
+        2. Dagobah -> Dagobah -> Hoth -> Endor
+        3. Dagobah -> Dagobah -> Hoth -> Hoth -> Endor
+        4. Dagobah -> Dagobah -> Dagobah -> Hoth -> Endor
+        5. Dagobah -> Hoth -> Hoth -> Endor
+        6. Dagobah -> Hoth -> Hoth -> Hoth -> Endor
+        7. Dagobah -> Endor
+
+        If Bounty Hunter in Endor at Day 1, 7th is 90%
+        If Bounty Hunter in Dagobah at Day 1, 2nd-4th is 90%
+        If Bounty Hunter in Endor at Day 2 and 4, 1st and 6th are 90%
+        So best choice is 5th
+         */
+        StolenPlans stolenPlans = StolenPlans.builder()
+                .countdown(4)
+                .bountyHunters(
+                        List.of(
+                                StolenPlans.BountyHunter.builder().planet(Endor.name()).day(1).build(),
+                                StolenPlans.BountyHunter.builder().planet(Endor.name()).day(2).build(),
+                                StolenPlans.BountyHunter.builder().planet(Endor.name()).day(4).build(),
+                                StolenPlans.BountyHunter.builder().planet(Dagobah.name()).day(1).build()
+                        )
+                )
+                .build();
+        stolenPlans.setCountdown(4);
+
+        List<Route> routes = getRoutes();
+
+        List<OddsCalculationResult.EscapePlan> expected = List.of(
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Dagobah)
+                        .startDay(0)
+                        .endPlanet(Hoth)
+                        .endDay(1)
+                        .build(),
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Hoth)
+                        .startDay(1)
+                        .endDay(2)
+                        .refuel(true)
+                        .build(),
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Hoth)
+                        .startDay(2)
+                        .endPlanet(Endor)
+                        .endDay(3)
+                        .build()
+        );
+
+        // When
+        List<OddsCalculationResult.EscapePlan> result = oddsCalculator.buildOptimalEscapePlans(stolenPlans, routes, config);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildOptimalEscapePlans_multiplePlansWithSameCaptureChance_returnWithMinimumSteps() {
+        // Given
+        Config config = Config.builder()
+                .departure(Dagobah.name())
+                .arrival(Endor.name())
+                .autonomy(6)
+                .build();
+
+        /*
+        Routes that will be created
+        1. Dagobah -> Hoth -> Endor
+        2. Dagobah -> Dagobah -> Hoth -> Endor
+        3. Dagobah -> Dagobah -> Hoth -> Hoth -> Endor
+        4. Dagobah -> Dagobah -> Dagobah -> Hoth -> Endor
+        5. Dagobah -> Hoth -> Hoth -> Endor
+        6. Dagobah -> Hoth -> Hoth -> Hoth -> Endor
+
+        If Bounty Hunter in Dagobah at Day 1, 2nd-4th is 90%
+        If Bounty Hunter in Endor at Day 2 1st is 90%
+        So best choices are 5th and 6th
+        But 5th is best since it's shortest
+         */
+        StolenPlans stolenPlans = StolenPlans.builder()
+                .countdown(3)
+                .bountyHunters(
+                        List.of(
+                                StolenPlans.BountyHunter.builder().planet(Endor.name()).day(2).build(),
+                                StolenPlans.BountyHunter.builder().planet(Dagobah.name()).day(1).build()
+                        )
+                )
+                .build();
+
+        List<Route> routes = getRoutes();
+
+        List<OddsCalculationResult.EscapePlan> expected = List.of(
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Dagobah)
+                        .startDay(0)
+                        .endPlanet(Hoth)
+                        .endDay(1)
+                        .build(),
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Hoth)
+                        .startDay(1)
+                        .endDay(2)
+                        .refuel(true)
+                        .build(),
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Hoth)
+                        .startDay(2)
+                        .endPlanet(Endor)
+                        .endDay(3)
+                        .build()
+        );
+
+        // When
+        List<OddsCalculationResult.EscapePlan> result = oddsCalculator.buildOptimalEscapePlans(stolenPlans, routes, config);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildOptimalEscapePlans_multiplePlansWithSameCaptureChanceAtLessThan100Percent_returnWithMinimumSteps() {
+        // Given
+        Config config = Config.builder()
+                .departure(Dagobah.name())
+                .arrival(Endor.name())
+                .autonomy(6)
+                .build();
+
+        /*
+        Routes that will be created (nb days with bounty hunters)
+        1. Dagobah -> Hoth -> Endor (2)
+        2. Dagobah -> Dagobah -> Hoth -> Endor (2)
+        3. Dagobah -> Dagobah -> Hoth -> Hoth -> Endor (3)
+        4. Dagobah -> Dagobah -> Dagobah -> Hoth -> Endor (2)
+        5. Dagobah -> Hoth -> Hoth -> Endor (2)
+        6. Dagobah -> Hoth -> Hoth -> Hoth -> Endor (3)
+
+        Shortest is 1st
+         */
+        StolenPlans stolenPlans = StolenPlans.builder()
+                .countdown(3)
+                .bountyHunters(
+                        List.of(
+                                StolenPlans.BountyHunter.builder().planet(Dagobah.name()).day(1).build(),
+                                StolenPlans.BountyHunter.builder().planet(Hoth.name()).day(1).build(),
+                                StolenPlans.BountyHunter.builder().planet(Hoth.name()).day(2).build(),
+                                StolenPlans.BountyHunter.builder().planet(Endor.name()).day(2).build(),
+                                StolenPlans.BountyHunter.builder().planet(Endor.name()).day(4).build()
+                        )
+                )
+                .build();
+
+        List<Route> routes = getRoutes();
+
+        List<OddsCalculationResult.EscapePlan> expected = List.of(
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Dagobah)
+                        .startDay(0)
+                        .endPlanet(Hoth)
+                        .endDay(1)
+                        .build(),
+                OddsCalculationResult.EscapePlan.builder()
+                        .startPlanet(Hoth)
+                        .startDay(1)
+                        .endPlanet(Endor)
+                        .endDay(2)
+                        .build()
+        );
+
+        // When
+        List<OddsCalculationResult.EscapePlan> result = oddsCalculator.buildOptimalEscapePlans(stolenPlans, routes, config);
+
+        // Then
+        assertEquals(expected, result);
     }
     // endregion
 }
