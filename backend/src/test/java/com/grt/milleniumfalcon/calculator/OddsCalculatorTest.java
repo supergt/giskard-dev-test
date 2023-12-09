@@ -36,7 +36,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = "spring.shell.interactive.enabled=false")
-public class OddsCalculatorTest {
+class OddsCalculatorTest {
     @InjectMocks
     OddsCalculator oddsCalculator;
 
@@ -425,6 +425,30 @@ public class OddsCalculatorTest {
     }
     // endregion
     // region getCaptureChance
+    @ParameterizedTest
+    @CsvSource({
+            "false",
+            "true",
+    })
+    void getCaptureChance_emptyList_null(boolean isListNull) {
+        // 3 days on the same planet as bounty hunters
+        List<OddsCalculationResult.EscapePlan> escapePlans = isListNull ? null : List.of();
+        StolenPlans stolenPlans = StolenPlans.builder()
+                .bountyHunters(List.of(
+                        StolenPlans.BountyHunter.builder().day(6).planet(Tatooine.name()).build(),
+                        StolenPlans.BountyHunter.builder().day(6).planet(Dagobah.name()).build(),
+                        StolenPlans.BountyHunter.builder().day(8).planet(Dagobah.name()).build(),
+                        StolenPlans.BountyHunter.builder().day(9).planet(Hoth.name()).build()
+                ))
+                .build();
+
+        BigDecimal expected = null;
+
+        BigDecimal result = oddsCalculator.getCaptureChance(escapePlans, stolenPlans);
+
+        assertEquals(expected, result);
+    }
+
     @Test
     void getCaptureChance_nominal_ok() {
         // 3 days on the same planet as bounty hunters
@@ -448,6 +472,27 @@ public class OddsCalculatorTest {
 
         BigDecimal result = oddsCalculator.getCaptureChance(escapePlans, stolenPlans);
 
+        assertEquals(expected, result);
+    }
+    // endregion
+    // region getOddsOfEscape
+    @ParameterizedTest
+    @CsvSource({
+            ",0",
+            "0.01,99",
+            "0.1,90",
+            "0.9,10",
+            "1,0",
+            "10,0",
+    })
+    void getOddsOfEscape_captureChanceNull_returnZero(String captureChanceStr, int expected) {
+        // Given
+        BigDecimal captureChance = null == captureChanceStr ? null : new BigDecimal(captureChanceStr);
+
+        // When
+        int result = oddsCalculator.getOddsOfEscape(captureChance);
+
+        // Then
         assertEquals(expected, result);
     }
     // endregion

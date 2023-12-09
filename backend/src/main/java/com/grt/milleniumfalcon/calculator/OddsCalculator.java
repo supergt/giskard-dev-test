@@ -4,6 +4,7 @@ import com.grt.milleniumfalcon.dto.Config;
 import com.grt.milleniumfalcon.dto.OddsCalculationResult;
 import com.grt.milleniumfalcon.dto.PlanetEnum;
 import com.grt.milleniumfalcon.dto.StolenPlans;
+import com.grt.milleniumfalcon.dto.TargetPlanetTravelTime;
 import com.grt.milleniumfalcon.helper.ClassPathFileLoader;
 import com.grt.milleniumfalcon.model.DynamicSqliteDataSource;
 import com.grt.milleniumfalcon.model.Route;
@@ -16,11 +17,13 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Component
@@ -42,9 +45,70 @@ public class OddsCalculator {
     public OddsCalculationResult calculate(@NotNull StolenPlans stolenPlans, @NotNull String configFolderPath, @NotNull Config overrideConfig) {
         List<Route> routes = loadRoutesWithCustomConfig(configFolderPath, overrideConfig);
 
+        List<OddsCalculationResult.EscapePlan> optimalEscapePlans = buildOptimalEscapePlans(stolenPlans, routes, overrideConfig);
+
+        BigDecimal captureChance = getCaptureChance(optimalEscapePlans, stolenPlans);
+
         return OddsCalculationResult.builder()
-                .oddsPercentage(5)
+                .escapePlanSteps(optimalEscapePlans)
+                .oddsPercentage(getOddsOfEscape(captureChance))
                 .build();
+    }
+
+    protected @NotNull List<OddsCalculationResult.EscapePlan> buildOptimalEscapePlans(@NotNull StolenPlans stolenPlans, @NotNull List<Route> routes, @NotNull Config config) {
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getPlanetToAllPossibleDestinations(routes);
+
+        PlanetEnum startPlanet = PlanetEnum.valueOf(config.getDeparture());
+        PlanetEnum targetPlanet = PlanetEnum.valueOf(config.getArrival());
+        int totalDays = stolenPlans.getCountdown();
+
+        List<List<OddsCalculationResult.EscapePlan>> allEscapePlans = buildEscapePlans(startPlanet, 0, targetPlanet, totalDays, config.getAutonomy(), config.getAutonomy(), planetToAllPossibleDestinations);
+
+        return allEscapePlans.stream()
+                .min(Comparator.comparing(escapePlans -> getCaptureChance(escapePlans, stolenPlans)))
+                .orElse(List.of());
+    }
+
+    protected Map<PlanetEnum, Set<TargetPlanetTravelTime>> getPlanetToAllPossibleDestinations(@NotNull List<Route> routes) {
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = new HashMap<>();
+
+        for (Route route : routes) {
+            PlanetEnum origin = PlanetEnum.valueOf(route.getId().getOrigin());
+            planetToAllPossibleDestinations.putIfAbsent(origin, new HashSet<>());
+            planetToAllPossibleDestinations.get(origin).add(TargetPlanetTravelTime.builder()
+                    .targetPlanet(PlanetEnum.valueOf(route.getId().getDestination()))
+                    .travelTime(route.getTravelTime())
+                    .build());
+        }
+
+        return planetToAllPossibleDestinations;
+    }
+
+    protected List<List<OddsCalculationResult.EscapePlan>> buildEscapePlans(
+            PlanetEnum currentPlanet,
+            int currentDay,
+            PlanetEnum targetPlanet,
+            int daysLeft,
+            int autonomyLeft,
+            int maxAutonomy,
+            @NotNull Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations) {
+
+        // Example : I start at Tatooine - where can I go?
+        // 1. Routes => all possible destinations
+        // 2. Refuel
+
+        return List.of();
+    }
+
+    protected int getOddsOfEscape(BigDecimal captureChance) {
+        if (null == captureChance) {
+            return 0;
+        }
+
+        int oddsOfEscape = BigDecimal.ONE.subtract(captureChance).multiply(new BigDecimal("100")).toBigInteger().intValue();
+
+        return Math.max(oddsOfEscape, 0);
+
     }
 
     protected synchronized List<Route> loadRoutesWithCustomConfig(String configFolderPath, Config overrideConfig) {
@@ -52,7 +116,11 @@ public class OddsCalculator {
         return routeRepository.findAll();
     }
 
-    protected BigDecimal getCaptureChance(List<OddsCalculationResult.EscapePlan> escapePlans, StolenPlans stolenPlans) {
+    protected @NotNull BigDecimal getCaptureChance(List<OddsCalculationResult.EscapePlan> escapePlans, @NotNull StolenPlans stolenPlans) {
+        if (CollectionUtils.isEmpty(escapePlans)) {
+            return null;
+        }
+
         final Map<Integer, Set<PlanetEnum>> dayToPlanetsBountyHuntersAreIn = getDayToPlanets(stolenPlans);
 
         final Map<Integer, PlanetEnum> dayToPlanetForEscapePlan = getDayToPlanet(escapePlans);
@@ -76,7 +144,7 @@ public class OddsCalculator {
         return calculateCaptureChance(nbDaysSamePlanet);
     }
 
-    protected BigDecimal calculateCaptureChance(int nbDaysSamePlanet) {
+    protected @NotNull BigDecimal calculateCaptureChance(int nbDaysSamePlanet) {
         return IntStream.range(0, nbDaysSamePlanet)
                 .mapToObj(i -> new BigDecimal("9").pow(i).divide(BigDecimal.TEN.pow(i + 1), 5, RoundingMode.HALF_UP))
                 .reduce(BigDecimal::add)
