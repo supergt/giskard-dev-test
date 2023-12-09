@@ -4,6 +4,7 @@ import com.grt.milleniumfalcon.dto.Config;
 import com.grt.milleniumfalcon.dto.OddsCalculationResult;
 import com.grt.milleniumfalcon.dto.PlanetEnum;
 import com.grt.milleniumfalcon.dto.StolenPlans;
+import com.grt.milleniumfalcon.dto.TargetPlanetTravelTime;
 import com.grt.milleniumfalcon.helper.ClassPathFileLoader;
 import com.grt.milleniumfalcon.model.DynamicSqliteDataSource;
 import com.grt.milleniumfalcon.model.Route;
@@ -19,9 +20,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.grt.milleniumfalcon.dto.PlanetEnum.Dagobah;
 import static com.grt.milleniumfalcon.dto.PlanetEnum.Endor;
@@ -494,6 +497,442 @@ class OddsCalculatorTest {
 
         // Then
         assertEquals(expected, result);
+    }
+    // endregion
+    // region buildEscapePlans
+    private static Map<PlanetEnum, Set<TargetPlanetTravelTime>> getSimplePlanetToAllPossibleDestinations() {
+        return Map.of(
+                Tatooine,
+                Set.of(TargetPlanetTravelTime.builder().targetPlanet(Dagobah).travelTime(6).build()),
+                Dagobah,
+                Set.of(
+                        TargetPlanetTravelTime.builder().targetPlanet(Endor).travelTime(1).build(),
+                        TargetPlanetTravelTime.builder().targetPlanet(Hoth).travelTime(1).build()
+                ),
+                Hoth,
+                Set.of(
+                        TargetPlanetTravelTime.builder().targetPlanet(Endor).travelTime(1).build()
+                )
+
+        );
+    }
+
+    private static Map<PlanetEnum, Set<TargetPlanetTravelTime>> getFullPlanetToAllPossibleDestinations() {
+        return Map.of(
+                Tatooine,
+                Set.of(
+                        TargetPlanetTravelTime.builder().targetPlanet(Dagobah).travelTime(6).build(),
+                        TargetPlanetTravelTime.builder().targetPlanet(Endor).travelTime(6).build()
+                ),
+                Dagobah,
+                Set.of(
+                        TargetPlanetTravelTime.builder().targetPlanet(Endor).travelTime(4).build(),
+                        TargetPlanetTravelTime.builder().targetPlanet(Hoth).travelTime(1).build()
+                ),
+                Hoth,
+                Set.of(
+                        TargetPlanetTravelTime.builder().targetPlanet(Endor).travelTime(1).build()
+                )
+
+        );
+    }
+
+    @Test
+    void buildEscapePlans_atTarget_returnEmptyList() {
+        // Given
+        PlanetEnum currentPlanet = Tatooine;
+        int currentDay = 1;
+        PlanetEnum targetPlanet = Tatooine;
+        int daysLeft = 0;
+        int autonomyLeft = 0;
+        int maxAutonomy = 6;
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getSimplePlanetToAllPossibleDestinations();
+        List<List<OddsCalculationResult.EscapePlan>> expected = List.of();
+
+        // When
+        List<List<OddsCalculationResult.EscapePlan>> result = oddsCalculator.buildEscapePlans(currentPlanet, currentDay, targetPlanet, daysLeft, autonomyLeft, maxAutonomy, planetToAllPossibleDestinations);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildEscapePlans_noMoreDaysLeft_returnNull() {
+        // Given
+        PlanetEnum currentPlanet = Tatooine;
+        int currentDay = 1;
+        PlanetEnum targetPlanet = Hoth;
+        int daysLeft = 0;
+        int autonomyLeft = 0;
+        int maxAutonomy = 6;
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getSimplePlanetToAllPossibleDestinations();
+        List<List<OddsCalculationResult.EscapePlan>> expected = null;
+
+        // When
+        List<List<OddsCalculationResult.EscapePlan>> result = oddsCalculator.buildEscapePlans(currentPlanet, currentDay, targetPlanet, daysLeft, autonomyLeft, maxAutonomy, planetToAllPossibleDestinations);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildEscapePlans_oneStep_returnListWithOneItem() {
+        // Given
+        PlanetEnum currentPlanet = Dagobah;
+        int currentDay = 0;
+        PlanetEnum targetPlanet = Hoth;
+        int daysLeft = 1;
+        int autonomyLeft = 6;
+        int maxAutonomy = 6;
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getSimplePlanetToAllPossibleDestinations();
+        List<List<OddsCalculationResult.EscapePlan>> expected = List.of(
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(0)
+                                .endPlanet(Hoth)
+                                .endDay(1)
+                        .build()
+                )
+        );
+
+        // When
+        List<List<OddsCalculationResult.EscapePlan>> result = oddsCalculator.buildEscapePlans(currentPlanet, currentDay, targetPlanet, daysLeft, autonomyLeft, maxAutonomy, planetToAllPossibleDestinations);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildEscapePlans_twoSteps_returnListWithOneItem() {
+        // Given
+        PlanetEnum currentPlanet = Tatooine;
+        int currentDay = 0;
+        PlanetEnum targetPlanet = Hoth;
+        int daysLeft = 7;
+        int autonomyLeft = 7;
+        int maxAutonomy = 7;
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getSimplePlanetToAllPossibleDestinations();
+        List<List<OddsCalculationResult.EscapePlan>> expected = List.of(
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endPlanet(Dagobah)
+                                .endDay(6)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(6)
+                                .endPlanet(Hoth)
+                                .endDay(7)
+                                .build()
+                )
+        );
+
+        // When
+        List<List<OddsCalculationResult.EscapePlan>> result = oddsCalculator.buildEscapePlans(currentPlanet, currentDay, targetPlanet, daysLeft, autonomyLeft, maxAutonomy, planetToAllPossibleDestinations);
+
+        // Then
+        assertEquals(expected, result);
+    }
+
+    @Test
+    void buildEscapePlans_twoPossibilities_returnListWithTwoItems() {
+        // Given
+        PlanetEnum currentPlanet = Dagobah;
+        int currentDay = 0;
+        PlanetEnum targetPlanet = Endor;
+        int daysLeft = 2;
+        int autonomyLeft = 7;
+        int maxAutonomy = 7;
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getSimplePlanetToAllPossibleDestinations();
+        Set<List<OddsCalculationResult.EscapePlan>> expected = Set.of(
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(0)
+                                .endPlanet(Hoth)
+                                .endDay(1)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Hoth)
+                                .startDay(1)
+                                .endPlanet(Endor)
+                                .endDay(2)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(0)
+                                .endPlanet(Endor)
+                                .endDay(1)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(0)
+                                .endDay(1)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(1)
+                                .endPlanet(Endor)
+                                .endDay(2)
+                                .build()
+                )
+        );
+
+        // When
+        List<List<OddsCalculationResult.EscapePlan>> result = oddsCalculator.buildEscapePlans(currentPlanet, currentDay, targetPlanet, daysLeft, autonomyLeft, maxAutonomy, planetToAllPossibleDestinations);
+
+        // Then
+        assertEquals(expected, new HashSet<>(result));
+    }
+
+    @Test
+    void buildEscapePlans_complex_case() {
+        // Given
+        PlanetEnum currentPlanet = Tatooine;
+        int currentDay = 0;
+        PlanetEnum targetPlanet = Endor;
+        int daysLeft = 10;
+        int autonomyLeft = 6;
+        int maxAutonomy = 6;
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = getFullPlanetToAllPossibleDestinations();
+        Set<List<OddsCalculationResult.EscapePlan>> expected = Set.of(
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endPlanet(Endor)
+                                .endDay(6)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endDay(1)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(1)
+                                .endPlanet(Endor)
+                                .endDay(7)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endDay(1)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(1)
+                                .endDay(2)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(2)
+                                .endPlanet(Endor)
+                                .endDay(8)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endDay(1)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(1)
+                                .endDay(2)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(2)
+                                .endDay(3)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(3)
+                                .endPlanet(Endor)
+                                .endDay(9)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endDay(1)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(1)
+                                .endDay(2)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(2)
+                                .endDay(3)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(3)
+                                .endDay(4)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(4)
+                                .endPlanet(Endor)
+                                .endDay(10)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endPlanet(Dagobah)
+                                .endDay(6)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(6)
+                                .endDay(7)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(7)
+                                .endPlanet(Hoth)
+                                .endDay(8)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Hoth)
+                                .startDay(8)
+                                .endPlanet(Endor)
+                                .endDay(9)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endDay(1)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(1)
+                                .endPlanet(Dagobah)
+                                .endDay(7)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(7)
+                                .endDay(8)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(8)
+                                .endPlanet(Hoth)
+                                .endDay(9)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Hoth)
+                                .startDay(9)
+                                .endPlanet(Endor)
+                                .endDay(10)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endPlanet(Dagobah)
+                                .endDay(6)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(6)
+                                .endDay(7)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(7)
+                                .endDay(8)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(8)
+                                .endPlanet(Hoth)
+                                .endDay(9)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Hoth)
+                                .startDay(9)
+                                .endPlanet(Endor)
+                                .endDay(10)
+                                .build()
+                ),
+                List.of(
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Tatooine)
+                                .startDay(0)
+                                .endPlanet(Dagobah)
+                                .endDay(6)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(6)
+                                .endDay(7)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Dagobah)
+                                .startDay(7)
+                                .endPlanet(Hoth)
+                                .endDay(8)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Hoth)
+                                .startDay(8)
+                                .endDay(9)
+                                .refuel(true)
+                                .build(),
+                        OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(Hoth)
+                                .startDay(9)
+                                .endPlanet(Endor)
+                                .endDay(10)
+                                .build()
+                )
+        );
+
+        // When
+        List<List<OddsCalculationResult.EscapePlan>> result = oddsCalculator.buildEscapePlans(currentPlanet, currentDay, targetPlanet, daysLeft, autonomyLeft, maxAutonomy, planetToAllPossibleDestinations);
+
+        // Then
+        assertEquals(expected, new HashSet<>(result));
     }
     // endregion
 }

@@ -17,7 +17,9 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -70,7 +72,7 @@ public class OddsCalculator {
     }
 
     protected Map<PlanetEnum, Set<TargetPlanetTravelTime>> getPlanetToAllPossibleDestinations(@NotNull List<Route> routes) {
-        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = new HashMap<>();
+        Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations = new EnumMap<>(PlanetEnum.class);
 
         for (Route route : routes) {
             PlanetEnum origin = PlanetEnum.valueOf(route.getId().getOrigin());
@@ -93,11 +95,69 @@ public class OddsCalculator {
             int maxAutonomy,
             @NotNull Map<PlanetEnum, Set<TargetPlanetTravelTime>> planetToAllPossibleDestinations) {
 
-        // Example : I start at Tatooine - where can I go?
-        // 1. Routes => all possible destinations
-        // 2. Refuel
+        List<List<OddsCalculationResult.EscapePlan>> currentEscapePlansList = new ArrayList<>();
 
-        return List.of();
+        if (currentPlanet.equals(targetPlanet)) {
+            return currentEscapePlansList;
+        }
+
+        if (daysLeft <= 0) {
+            return null;
+        }
+
+        // Refuel
+        List<List<OddsCalculationResult.EscapePlan>> allRefuelPlans = buildEscapePlans(currentPlanet, currentDay + 1, targetPlanet, daysLeft - 1, maxAutonomy, maxAutonomy, planetToAllPossibleDestinations);
+        if (null != allRefuelPlans) {
+            if (allRefuelPlans.isEmpty()) {
+                allRefuelPlans.add(new ArrayList<>());
+            }
+
+            OddsCalculationResult.EscapePlan newEntry = OddsCalculationResult.EscapePlan.builder()
+                    .startPlanet(currentPlanet)
+                    .startDay(currentDay)
+                    .endDay(currentDay + 1)
+                    .refuel(true)
+                    .build();
+
+            allRefuelPlans.forEach(refuelPlan -> refuelPlan.add(0, newEntry));
+            currentEscapePlansList.addAll(allRefuelPlans);
+        }
+
+        // Go to a destination
+        Set<TargetPlanetTravelTime> possibleDestinations = planetToAllPossibleDestinations.get(currentPlanet);
+        if (null != possibleDestinations) {
+            for (TargetPlanetTravelTime possibleDestination : possibleDestinations) {
+                if (possibleDestination.getTravelTime() <= autonomyLeft && possibleDestination.getTravelTime() <= daysLeft) {
+                    int endDay = currentDay + possibleDestination.getTravelTime();
+                    PlanetEnum endPlanet = possibleDestination.getTargetPlanet();
+                    List<List<OddsCalculationResult.EscapePlan>> possibleDestinationPlans = buildEscapePlans(endPlanet,
+                            endDay,
+                            targetPlanet,
+                            daysLeft - possibleDestination.getTravelTime(),
+                            autonomyLeft - possibleDestination.getTravelTime(),
+                            maxAutonomy,
+                            planetToAllPossibleDestinations);
+
+                    if (null != possibleDestinationPlans) {
+                        if (possibleDestinationPlans.isEmpty()) {
+                            possibleDestinationPlans.add(new ArrayList<>());
+                        }
+
+                        OddsCalculationResult.EscapePlan newEntry = OddsCalculationResult.EscapePlan.builder()
+                                .startPlanet(currentPlanet)
+                                .endPlanet(endPlanet)
+                                .startDay(currentDay)
+                                .endDay(endDay)
+                                .build();
+
+                        possibleDestinationPlans.forEach(refuelPlan -> refuelPlan.add(0, newEntry));
+                        currentEscapePlansList.addAll(possibleDestinationPlans);
+                    }
+                }
+            }
+        }
+
+        return currentEscapePlansList.isEmpty() ? null : currentEscapePlansList;
     }
 
     protected int getOddsOfEscape(BigDecimal captureChance) {
